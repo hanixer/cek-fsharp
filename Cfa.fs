@@ -9,10 +9,11 @@ type PrimitiveOp =
     | Add
     | If
     | Stop
+    | IsZero
 
 type Simple =
     | Reference of binder : Label * label : Label * variable : Variable
-    | Lambda of label : Label * Lambda
+    | Lambda of label : Lambda
     | Int of label : Label * value : int
     | Bool of label : Label * value : bool
     | PrimitiveOp of label : Label * op : PrimitiveOp
@@ -21,15 +22,16 @@ and Complex =
     | Call of label : Label * func : Simple * args : Simple list
     | Letrec of label : Label * bindings : (Variable * Simple) list * body : Complex
 
-and Lambda = Variable list * Complex
+and Lambda = Label * Variable list * Complex
 
+type Program = Lambda
 
 // Contour or dynamic frame
 type Frame = int
 
 type Environment = Map<Label, Frame>
 
-type Closure = Label * Lambda * Environment
+type Closure = Lambda * Environment
 
 type Value =
     | Int of int
@@ -56,7 +58,7 @@ let evaluate expr env store =
     | Simple.Reference(binder, label, variable) ->
         let frame = applyEnvironment binder env
         applyStore variable frame store
-    | Simple.Lambda(label, lambda) -> Closure(label, lambda, env)
+    | Simple.Lambda(lambda) -> Closure(lambda, env)
     | Simple.PrimitiveOp(label, op) -> PrimitiveOp(op)
 
 let isFunction =
@@ -89,7 +91,7 @@ let rec applyFunction funcValue argValues store =
         else
             Error
     | Int(_) | Bool(_) -> Error
-    | Closure(label, (args, body), env) ->
+    | Closure((label, args, body), env) ->
         if List.length args <> List.length argValues then
             Error
         else
@@ -99,7 +101,7 @@ let rec applyFunction funcValue argValues store =
             prepareCall body env2 store2
     | PrimitiveOp(Add) ->
         match argValues with
-        | [Int a; Int b] -> Value(Int(a + b))
+        | [Int a; Int b; cont] -> applyFunction cont [Int(a + b)] store
         | _ -> Error
     | PrimitiveOp(If) ->
         match argValues with
@@ -108,6 +110,11 @@ let rec applyFunction funcValue argValues store =
                 applyFunction thenK [] store
             else
                 applyFunction elseK [] store
+        | _ -> Error
+    | PrimitiveOp(IsZero) ->
+        match argValues with
+        | [Int 0; cont] -> applyFunction cont [Bool(true)] store
+        | [_; cont] -> applyFunction cont [Bool(false)] store
         | _ -> Error
 
 and prepareCall complex env store =
@@ -124,3 +131,9 @@ and prepareCall complex env store =
             Map.add (name, frame) value store1
         let store2 = List.fold folder store bindings
         prepareCall body env2 store2
+
+let runProgram programLambda =
+    let env = Map.empty
+    let closure = Closure(programLambda, env)
+    let store = Map.empty
+    applyFunction closure [PrimitiveOp(Stop)] store
