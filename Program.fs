@@ -1,12 +1,23 @@
 ﻿// Learn more about F# at http://fsharp.org
 
 open System
-open Cek
+
+open Cesk
+
+let p : Program = [
+    "Main", "", [], [
+        "main", ["a"; "b"; "c"], [
+            MethodCall("a", Reference(thisName), "submain", [])
+        ]
+        "submain", [], [
+            Return(Expression.Operation(Add, [Expression.Int(1); Expression.Int(2)]))
+        ]
+    ]
+]
 
 [<EntryPoint>]
 let main argv =
-    printfn "Hello World from F#!"
+    runProgram p
 
-    let term = c (l "x" (r "x")) (l "y" (r "y"))
-    evaluate term
+
     0 // return an integer exit code

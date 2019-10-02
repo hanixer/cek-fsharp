@@ -1,5 +1,7 @@
 module Cesk
 
+open Display
+
 // Language
 
 type Operation =
@@ -68,8 +70,8 @@ type Store = {
 type FramePointer = Pointer
 
 type Continuation =
-    | Assign of name : string * Statement list * FramePointer * Continuation
-    | Handle of className : string * label : string * Continuation
+    | Assign of name : string * nextStmts : Statement list * framePointer : FramePointer * nextCont : Continuation
+    | Handle of className : string * label : string * nextCont : Continuation
     | Halt
 
 type State = {
@@ -158,7 +160,8 @@ let updateStoreArguments argNames argExprs framePointerNew storeNew framePointer
         updateStore (getAddress framePointerNew name) value storeAcc) storeNew zipped
 
 let applyMethod method lhs nextStmts thisValue argExprs state =
-    let (_, argNames, body) = method
+    let (_, registers, body) = method
+    let argNames = List.skip (List.length registers - List.length argExprs) registers
     let framePointer1 = freshPointer()
     let store1 = updateStore (getAddress framePointer1 thisName) thisValue state.Store
     let store2 = updateStoreArguments argNames argExprs framePointer1 store1 state.Environment state.Store
@@ -191,7 +194,7 @@ let applyContinuation cont value state =
         let store = updateStore (getAddress framePointer name) value state.Store
         {state with Control = statements; Store = store; Kont = cont}
     | Continuation.Handle(className, label, _) -> failwith "Not Implemented"
-    | Continuation.Halt -> failwith "Not Implemented"
+    | Continuation.Halt -> {state with Control = []}
 
 let step program state =
     let statement = List.head state.Control
@@ -240,5 +243,97 @@ let step program state =
         let cont = Continuation.Handle(className, label, state.Kont)
         {state with Kont = cont}
     | PopHandler -> {state with Kont = popHandler state.Kont}
-    | Throw(_) -> failwith "Not Implemented"
+    | Throw(expression) -> failwith "Not Implemented"
     | MoveException(name) -> failwith "Not Implemented"
+
+let isFinal state = List.isEmpty state.Control
+
+let findMain (program : Program) : (string * MethodDefinition) =
+    let tryFindMethod methods = List.tryFind (fun (name, _, _) -> name = "main") methods
+    List.pick (fun classDef ->
+        let name, _, _, methods = classDef
+        match tryFindMethod methods with
+        | Some(m) -> Some(name, m)
+        | _ -> None
+        ) program
+
+let makeLabelsMap program =
+    let rec handleStatement stmts map =
+        match stmts with
+        | Label label :: rest -> handleStatement rest (Map.add label rest map)
+        | _ :: rest -> handleStatement rest map
+        | [] -> map
+
+    let handleMethod map (_, _, body)  =
+        handleStatement body map
+
+    let handleClass map (_, _, _, methods)  =
+        List.fold handleMethod map methods
+
+    List.fold handleClass Map.empty program
+
+let showState state =
+    let showStatement statement = iStr (sprintf "%A" statement)
+
+    let showAddress (a, b) = iConcat [iNum a; iStr ":"; iStr b]
+
+    let showStore store =
+        Map.toList store.Map
+        |> List.map (fun (addr, value) ->
+            iConcat [showAddress addr; iStr " -> "; iStr (sprintf "%A" value)])
+        |> iInterleave iNewline
+
+    let showContinuationShort cont =
+        match cont with
+        | Halt -> iStr "halt"
+        | Assign(name, nextStmts, framePointer, nextCont) -> iStr "assign"
+        | Handle(className, label, nextCont) -> iStr "handle"
+
+    let showContinuation cont =
+        match cont with
+        | Halt -> iStr "halt"
+        | Assign(name, nextStmts, framePointer, nextCont) ->
+            iInterleave (iStr " ") [iStr "assign "; iStr name;
+                                    iNum framePointer; showContinuationShort nextCont]
+        | Handle(className, label, nextCont) ->
+            iInterleave (iStr " ") [iStr "handle "; iStr className; iStr label;
+                                    showContinuationShort nextCont]
+
+    iInterleave iNewline [
+        iConcat [iStr "Current statement: "; showStatement state.Control.Head]
+        iConcat [iStr "Frame pointer: "; iNum state.Environment]
+        iConcat [iStr "Store: "; showStore state.Store]
+        iConcat [iStr "Continuation: "; showContinuation state.Kont]
+    ]
+
+let stateToString state = iDisplay (showState state)
+let statesToString states = iDisplay (iConcat (List.map showState states))
+
+
+
+let runProgram program =
+    let (mainClass, method) = findMain program
+    let (_, _, stmts) = method
+
+    let state = {
+        Control = stmts
+        Environment = freshPointer()
+        Store = {Map = Map.empty; Counter = 0}
+        Kont = Halt
+        LabelsMap = makeLabelsMap program
+    }
+
+    let object = Object(mainClass, freshPointer())
+    let address = (state.Environment, thisName)
+    let store1 = updateStore address object state.Store
+    let state2 = {state with Store = store1}
+    let state3 = applyMethod method "final" [] object [] state2
+
+    let rec loop state =
+        printfn "%s" (stateToString state)
+        if isFinal state then
+            printfn "finished!"
+        else
+            loop (step program state)
+
+    loop state3
