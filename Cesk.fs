@@ -309,8 +309,6 @@ let showState state =
 let stateToString state = iDisplay (showState state)
 let statesToString states = iDisplay (iConcat (List.map showState states))
 
-
-
 let runProgram program =
     let (mainClass, method) = findMain program
     let (_, _, stmts) = method
