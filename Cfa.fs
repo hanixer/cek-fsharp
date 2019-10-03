@@ -136,4 +136,5 @@ let runProgram programLambda =
     let env = Map.empty
     let closure = Closure(programLambda, env)
     let store = Map.empty
-    applyFunction closure [PrimitiveOp(Stop)] store
+    let answ = applyFunction closure [PrimitiveOp(Stop)] store
+    printfn "answer is %A" answ
