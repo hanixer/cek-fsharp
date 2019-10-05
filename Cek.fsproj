@@ -6,7 +6,9 @@
   <ItemGroup>
     <Compile Include="Display.fs" />
     <Compile Include="SExpr.fs" />
-    <Compile Include="Cfa.fs" />
+    <Compile Include="Cps.fs" />
+    <Compile Include="Interpreter.fs" />
+    <Compile Include="ExactCfa.fs" />
     <Compile Include="Cek.fs" />
     <Compile Include="Cesk.fs" />
     <Compile Include="Program.fs" />

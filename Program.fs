@@ -1,7 +1,8 @@
 ﻿// Learn more about F# at http://fsharp.org
 
 open System
-open Cfa
+open Cps
+open Interpreter
 open SExpr
 
 let program : Program =
