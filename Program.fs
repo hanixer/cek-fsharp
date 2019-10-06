@@ -2,7 +2,7 @@
 
 open System
 open Cps
-open ExactCfa
+open KCfa
 open SExpr
 
 let program : Program =
@@ -77,10 +77,30 @@ let toCps sexpr =
 let s1 = "(lambda (stop) ((lambda (x y k) (+ x y k)) 1 2 stop))"
 let s2 = "(lambda (stop) (letrec ((f (lambda (n k) (zero? n (lambda (z) (if z (lambda () (k 0)) (lambda () (+ n -1 (lambda (m) (f m (lambda (fm) (+ n fm k)))))))))))) (f 5 stop)))"
 
+// (let* ((id (lambda (x) x))
+//        (a  (id (lambda (z) (stop z))))
+//        (b  (id (lambda (y) (stop y)))))
+//   (stop b))
+let s3 = "
+(lambda (stop)
+  ((lambda (id)
+
+    (id (lambda (z) (stop z)) (lambda (a)
+
+      (id (lambda (y) (stop y)) (lambda (b)
+        (stop b)
+      ))
+    ))
+    )
+
+   (lambda (x k) (k x)))
+  )"
+
+
 [<EntryPoint>]
 let main argv =
 
-    let program = (toCps (stringToSExpr s2))
+    let program = (toCps (stringToSExpr s3))
     printfn "program:\n %A\n" program
     runProgram program
 

@@ -11,6 +11,7 @@
     <Compile Include="ExactCfa.fs" />
     <Compile Include="Cek.fs" />
     <Compile Include="Cesk.fs" />
+    <Compile Include="KCfa.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 </Project>

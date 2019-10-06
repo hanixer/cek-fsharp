@@ -19,10 +19,12 @@ type Simple =
     | PrimitiveOp of label : Label * op : PrimitiveOp
 
 and Complex =
-    | Call of label : Label * func : Simple * args : Simple list
+    | Call of CallInfo
     | Letrec of label : Label * bindings : (Variable * Simple) list * body : Complex
 
 and Lambda = Label * Variable list * Complex
+
+and CallInfo = Label * Simple * Simple list
 
 type Program = Lambda
 
