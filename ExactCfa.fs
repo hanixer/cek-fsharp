@@ -1,5 +1,7 @@
 module ExactCfa
 
+open Display
+
 // Exact control flow analysis for CPS
 
 type Frame = int
@@ -111,7 +113,8 @@ and prepareCall complex env store =
     | Cps.Call(label, func, args) ->
         let funcVal = evaluate func env store
         let argValues = List.map (fun arg -> evaluate arg env store) args
-        applyFunction funcVal argValues store
+        let entry = (label, env, funcVal)
+        entry :: applyFunction funcVal argValues store
     | Cps.Letrec(label, bindings, body) ->
         let frame = freshFrame()
         let env2 = Map.add label frame env
@@ -121,10 +124,40 @@ and prepareCall complex env store =
         let store2 = List.fold folder store bindings
         prepareCall body env2 store2
 
+
+
+
+let showValue (label, value) =
+    match value with
+    | Int n -> iStr (sprintf "%d:%d" label n)
+    | Bool true  -> iAppend (iNum label) (iStr ":#t")
+    | Bool false  -> iAppend (iNum label) (iStr ":#f")
+    | Closure((_, args, _), _) ->
+        let args = List.map iStr args |> iInterleave (iStr " ")
+        iConcat [iNum label; iStr ":(lambda "; args; iStr ")"]
+    | PrimitiveOp(s) -> iStr (sprintf "%d:%A" label s)
+
+let showEntry (d, value) =
+    iConcat [iStr (sprintf "%A" d); iStr ":"; iNewline; showValue value; iNewline]
+
+let entryToString entry = showEntry entry |> iDisplay
+
 let runProgram programLambda =
     let label, _, _ = programLambda
     let env = Map.empty
     let closure = Closure(programLambda, env)
     let store = Map.empty
     let answ = applyFunction (label, closure) [0, PrimitiveOp(Cps.Stop)] store
-    printfn "answer is %A" answ
+    let answ =
+        List.map (fun (a, b, c) -> (a, (b, c))) answ
+        |> List.groupBy fst
+        |> Map.ofList
+        |> Map.map (fun k v -> List.map snd v)
+
+    Map.iter (fun k v ->
+        printfn "{%d}" k
+        List.iter (fun x ->
+            printfn "%s" (entryToString x)
+            ) v
+        printfn ""
+        ) answ

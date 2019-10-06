@@ -2,7 +2,7 @@
 
 open System
 open Cps
-open Interpreter
+open ExactCfa
 open SExpr
 
 let program : Program =
@@ -81,7 +81,8 @@ let s2 = "(lambda (stop) (letrec ((f (lambda (n k) (zero? n (lambda (z) (if z (l
 let main argv =
 
     let program = (toCps (stringToSExpr s2))
-    let answer = runProgram program
-    printfn "%A" answer
+    printfn "program:\n %A\n" program
+    runProgram program
+
 
     0 // return an integer exit code
