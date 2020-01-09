@@ -102,7 +102,7 @@ let main argv =
 
     let program = (toCps (stringToSExpr s3))
     printfn "program:\n %A\n" program
-    runProgram program
+    ExactCfa.runProgram program
 
 
     0 // return an integer exit code

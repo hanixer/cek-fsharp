@@ -6,6 +6,7 @@
   <ItemGroup>
     <Compile Include="Display.fs" />
     <Compile Include="SExpr.fs" />
+    <Compile Include="Anf.fs" />
     <Compile Include="Cps.fs" />
     <Compile Include="Interpreter.fs" />
     <Compile Include="ExactCfa.fs" />

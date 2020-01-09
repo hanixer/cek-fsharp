@@ -4,6 +4,7 @@ open Display
 
 // k-CFA
 
+/// Time is a list of previously called functions - call stack.
 type Time = Cps.CallInfo list
 
 type Environment = Map<Cps.Variable, Time>
@@ -23,13 +24,6 @@ type Store = Map<Bind, Values>
 type State =
     | Eval of Cps.CallInfo * Environment * Store * Time
     | Apply of Value * List<Set<Value>> * Store * Time
-
-
-let callSiteAdd = -1
-let callSiteIfTrue = -2
-let callSiteIfFalse = -3
-let callSiteIsZeroTrue = -4
-let callSiteIsZeroFalse = -5
 
 let applyEnvironment label (env : Environment) =
     Map.find label env
