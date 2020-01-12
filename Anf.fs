@@ -1,6 +1,6 @@
 module rec Anf
 
-/// K-CFA analysis for ANF language.
+/// 1-CFA analysis for ANF language.
 /// Uses allocation scheme from paper "Pushdown Control-Flow Analysis for Free" by Gilray
 
 /// let x = e1 e2 in e3
@@ -35,7 +35,8 @@ type Value =
     | Int of int
 
 /// Address of continuation in continuation store.
-type ContAddress = TermId * Environment
+/// Target Term (which function is called) * Source Term (which expression calls that function)
+type ContAddress = TermId * TermId
 
 /// Represents a call frame - to which variable the result must be bound,
 /// which expression should be evaulated next in which environment,
@@ -53,7 +54,7 @@ type State =
       ContStore: ContStore
       ContAddress: ContAddress }
 
-let contAddressHalt = (-1, Map.empty)
+let contAddressHalt = (-1, -1)
 
 let getTermId term =
     match term with
@@ -61,6 +62,7 @@ let getTermId term =
     | Variable(id = id)
     | Lambda(id = id)
     | LetCall(id = id) -> id
+    | Let(id = id) -> failwith "Not Implemented"
 
 let addValueToStore addr value store =
     match Map.tryFind addr store with
@@ -84,6 +86,7 @@ let returnValue termId value (state: State) =
             { Term = retTerm
               Env = env
               Store = store
+              // HERE
               ContStore = state.ContStore
               ContAddress = nextContAddr }) state.ContStore.[state.ContAddress]
 
@@ -103,12 +106,13 @@ let performCall name body termId funcVals argVals state =
             let addr = (arg, termId)
             let env = Map.add arg addr funcEnv
             let store = Map.add addr argVals state.Store
-            let contAddr = (getTermId funcBody, env)
+            let contAddr = (getTermId funcBody, termId)
             let frame = (name, body, state.Env, state.ContAddress)
             let contStore = addValueToStore contAddr frame state.ContStore
             { Term = funcBody
               Env = env
               Store = store
+              // HERE
               ContStore = contStore
               ContAddress = contAddr }
     }
@@ -198,7 +202,7 @@ let term1 =
 /// b -> {1, 2}
 
 /// (let ((id (lambda (x) x)))
-///     (let ((call-id (lambda (y) y)))
+///     (let ((call-id (lambda (y) (call-id y))))
 ///         (let ((a (call-id 1)))
 ///             (let ((b (call-id 2)))
 ///                 b))))
